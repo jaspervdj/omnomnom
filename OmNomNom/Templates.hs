@@ -49,15 +49,12 @@ root = docTypeHtml $ do
         javaScript ! src "/omnomnom.js" $ mempty
     H.body $ do
         javaScript "appendBody('/header');"
-        javaScript "appendBody('/users');"
+        javaScript "appendBody('/content');"
 
 -- | Site header
 --
-header :: Maybe User -> Html
-header muser = do
-    h1 "omnomnom"
-    case muser of Nothing -> mempty
-                  Just user -> p $ string $ "Logged in as " ++ unUser user
+header :: Html
+header = h1 "omnomnom"
 
 -- | Show the list of users
 --

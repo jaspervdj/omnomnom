@@ -17,6 +17,7 @@ import Snap.Http.Server (httpServe)
 import Snap.Util.FileServe (fileServe)
 import qualified Data.ByteString as SB
 import qualified Codec.Binary.UTF8.String as Utf8 (decode, encode)
+import Text.Blaze (string)
 
 import OmNomNom.Database
 import OmNomNom.Types
@@ -31,7 +32,16 @@ root = blaze Templates.root
 -- | Site header
 --
 header :: Snap ()
-header = blaze . Templates.header =<< getUserFromCookie
+header = blaze Templates.header
+
+-- | Content section
+--
+content :: Snap ()
+content = do
+    muser <- getUserFromCookie
+    case muser of
+        Nothing -> users
+        Just m -> blaze $ string $ "YOU ARE " ++ unUser m
 
 -- | User list
 --
@@ -76,7 +86,7 @@ site :: Snap ()
 site = fileServe "static" <|> route
     [ ("", ifTop root)
     , ("/header", header)
-    , ("/users", users)
+    , ("/content", content)
     , ("/add-user", addUser)
     , ("/login", login)
     ]
