@@ -9,7 +9,7 @@ import Data.List (sort)
 import Control.Applicative ((<|>), (<$>))
 import System.Environment (getArgs)
 import Control.Monad.Trans (liftIO)
-import Control.Monad (forM, (=<<))
+import Control.Monad (forM, (=<<), mapM_)
 import Data.Maybe (catMaybes)
 
 import Snap.Types
@@ -41,7 +41,7 @@ content = do
     muser <- getUserFromCookie
     case muser of
         Nothing -> users
-        Just m -> blaze $ string $ "YOU ARE " ++ unUser m
+        Just _ -> shop
 
 -- | User list
 --
@@ -61,7 +61,7 @@ addUser = withRedis $ \redis -> do
     if exists || null name
         then blaze $ Templates.warning "Invalid username."
         else liftIO $ do setAdd redis "users" $ userKey name
-                         itemSet redis (userKey name) (User name)
+                         itemSet redis (userKey name) (User name [])
     users
 
 -- | Log in
@@ -80,6 +80,18 @@ login = do
         , cookiePath = Just "/"
         }
 
+-- | Show all products
+--
+shop :: Snap ()
+shop = do
+    products <- liftIO $ withRedis $ flip setFindAll "products"
+    blaze $ Templates.shop $ sort products
+
+-- | Order a product
+--
+order :: Snap ()
+order = undefined  -- Stub
+
 -- | Main site handler
 --
 site :: Snap ()
@@ -89,9 +101,11 @@ site = fileServe "static" <|> route
     , ("/content", content)
     , ("/add-user", addUser)
     , ("/login", login)
+    , ("/order", order)
     ]
 
 -- | Get the current user (based on cookies)
+--
 getUserFromCookie :: Snap (Maybe User)
 getUserFromCookie = do
     cookies <- rqCookies <$> getRequest
@@ -104,6 +118,13 @@ getUserFromCookie = do
 --
 main :: IO ()
 main = do
+    -- Set some items
+    withRedis $ \redis -> mapM_ (setAdd redis "products" . Product)
+        [ "A large sandwich"
+        , "A small sandwich"
+        , "Home-made cookies"
+        ]
+
     -- Read the port to run on
     port <- getArgs >>= \args -> return $ case args of
         [p] -> read p

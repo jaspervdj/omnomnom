@@ -18,3 +18,8 @@ function login(name) {
         window.location.replace("/");
     });
 }
+
+function order(name) {
+    alert("Ordering " + name);
+    return false;
+}

@@ -7,6 +7,7 @@ module OmNomNom.Templates
     , root
     , OmNomNom.Templates.header
     , users
+    , shop
     ) where
 
 import Control.Monad (forM_)
@@ -61,11 +62,22 @@ header = h1 "omnomnom"
 users :: [User] -> Html
 users users = H.div ! A.id "users" $ do
     p "Select your name or add yourself to the list."
-    ul $ forM_ users $ \user -> do
-        let name = unUser user
-        li $ a ! onclick (stringValue $ "login('" ++ name ++ "');")
-               ! href "#"
-               $ string name
+    ul $ forM_ users $ \user -> li $ do
+        let name' = userName user
+        a ! onclick (stringValue $ "login('" ++ name' ++ "');")
+          ! href "#"
+          $ string name'
     H.form ! name "add-user" ! onsubmit "return addUser();" $ do
         input ! type_ "text" ! name "add-user-name" ! A.id "add-user-name"
         input ! type_ "submit" ! value "Create new user"
+
+-- | Show the shop
+--
+shop :: [Product] -> Html
+shop products = H.div ! A.id "shop" $ do
+    ul $ forM_ products $ \product -> li $ do
+        let name' = unProduct product
+        p $ string $ name'
+        H.form ! name "shop-product"
+               ! onsubmit (stringValue $ "return order('" ++ name' ++ "');") $
+            input ! type_ "submit" ! value "Get me one!"
