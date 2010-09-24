@@ -1,0 +1,7 @@
+dist
+*.o
+*.hi
+*.swp
+*.log
+
+OmNomNom/Server
