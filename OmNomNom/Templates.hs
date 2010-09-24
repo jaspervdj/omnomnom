@@ -8,6 +8,7 @@ module OmNomNom.Templates
     , OmNomNom.Templates.header
     , users
     , shop
+    , cart
     ) where
 
 import Control.Monad (forM_)
@@ -81,3 +82,9 @@ shop products = H.div ! A.id "shop" $ do
         H.form ! name "shop-product"
                ! onsubmit (stringValue $ "return order('" ++ name' ++ "');") $
             input ! type_ "submit" ! value "Get me one!"
+
+cart :: User -> Html
+cart user = H.div ! A.id "cart" $ do
+    p $ string $ "Cart for " ++ userName user
+    ul $ forM_ (userProducts user) $ \product -> li $
+        p $ string $ unProduct product

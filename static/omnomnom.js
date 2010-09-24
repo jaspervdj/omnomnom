@@ -20,6 +20,9 @@ function login(name) {
 }
 
 function order(name) {
-    alert("Ordering " + name);
+    $.post("/order/", {name: name}, function (result) {
+        $("#cart").html(result);
+    });
+
     return false;
 }

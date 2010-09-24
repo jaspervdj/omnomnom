@@ -9,7 +9,7 @@ import Data.List (sort)
 import Control.Applicative ((<|>), (<$>))
 import System.Environment (getArgs)
 import Control.Monad.Trans (liftIO)
-import Control.Monad (forM, (=<<), mapM_)
+import Control.Monad (forM, (=<<), mapM_, when)
 import Data.Maybe (catMaybes)
 
 import Snap.Types
@@ -41,7 +41,8 @@ content = do
     muser <- getUserFromCookie
     case muser of
         Nothing -> users
-        Just _ -> shop
+        Just _ -> do shop
+                     cart
 
 -- | User list
 --
@@ -62,6 +63,8 @@ addUser = withRedis $ \redis -> do
         then blaze $ Templates.warning "Invalid username."
         else liftIO $ do setAdd redis "users" $ userKey name
                          itemSet redis (userKey name) (User name [])
+    
+    -- Show the user list
     users
 
 -- | Log in
@@ -73,7 +76,7 @@ login = do
     root
   where
     cookie name = Cookie
-        { cookieName = "name"
+        { cookieName = "user"
         , cookieValue = SB.pack $ Utf8.encode name
         , cookieExpires = Nothing
         , cookieDomain = Nothing
@@ -90,7 +93,23 @@ shop = do
 -- | Order a product
 --
 order :: Snap ()
-order = undefined  -- Stub
+order = withRedis $ \redis-> do
+    Just user <- getUserFromCookie
+    Just product <- fmap (Product . Utf8.decode . SB.unpack) <$> getParam "name"
+    valid <- liftIO $ setContains redis "products" product
+    when valid $ do
+        let user' = user {userProducts = product : userProducts user}
+        liftIO $ itemSet redis (userKey $ userName user) user'
+
+    -- Show the cart
+    cart
+
+-- | Show the cart
+--
+cart :: Snap ()
+cart = withRedis $ \redis -> do
+    Just user <- getUserFromCookie
+    blaze $ Templates.cart user 
 
 -- | Main site handler
 --
@@ -102,6 +121,7 @@ site = fileServe "static" <|> route
     , ("/add-user", addUser)
     , ("/login", login)
     , ("/order", order)
+    , ("/cart", cart)
     ]
 
 -- | Get the current user (based on cookies)
@@ -109,7 +129,7 @@ site = fileServe "static" <|> route
 getUserFromCookie :: Snap (Maybe User)
 getUserFromCookie = do
     cookies <- rqCookies <$> getRequest
-    case filter ((== "name") . cookieName) cookies of
+    case filter ((== "user") . cookieName) cookies of
         [] -> return Nothing
         (cookie : _) -> liftIO $ withRedis $ \redis -> itemGet redis $
             userKey $ Utf8.decode $ SB.unpack $ cookieValue cookie
