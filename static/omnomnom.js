@@ -19,6 +19,12 @@ function login(name) {
     });
 }
 
+function logout() {
+    $.post("/logout/", function (result) {
+        window.location.replace("/");
+    });
+}
+
 function order(name) {
     $.post("/order/", {name: name}, function (result) {
         $("#cart").html(result);

@@ -76,6 +76,7 @@ users users = H.div ! A.id "users" $ do
 --
 shop :: [Product] -> Html
 shop products = H.div ! A.id "shop" $ do
+    a ! onclick "logout();" ! href "#" $ "Logout"
     ul $ forM_ products $ \product -> li $ do
         let name' = unProduct product
         p $ string $ name'
@@ -83,6 +84,8 @@ shop products = H.div ! A.id "shop" $ do
                ! onsubmit (stringValue $ "return order('" ++ name' ++ "');") $
             input ! type_ "submit" ! value "Get me one!"
 
+-- | The cart with the user's products in
+--
 cart :: User -> Html
 cart user = H.div ! A.id "cart" $ do
     p $ string $ "Cart for " ++ userName user

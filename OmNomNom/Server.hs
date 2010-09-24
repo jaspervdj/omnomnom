@@ -83,6 +83,21 @@ login = do
         , cookiePath = Just "/"
         }
 
+-- | Log out
+--
+logout :: Snap ()
+logout = do
+    modifyResponse $ addCookie cookie
+    root
+  where
+    cookie = Cookie
+        { cookieName = "user"
+        , cookieValue = ""
+        , cookieExpires = Nothing
+        , cookieDomain = Nothing
+        , cookiePath = Just "/"
+        }
+
 -- | Show all products
 --
 shop :: Snap ()
@@ -120,6 +135,7 @@ site = fileServe "static" <|> route
     , ("/content", content)
     , ("/add-user", addUser)
     , ("/login", login)
+    , ("/logout", logout)
     , ("/order", order)
     , ("/cart", cart)
     ]
