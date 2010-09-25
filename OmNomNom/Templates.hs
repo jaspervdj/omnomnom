@@ -6,7 +6,7 @@ module OmNomNom.Templates
     , blaze
     , root
     , OmNomNom.Templates.header
-    , users
+    , login
     , shop
     , cart
     ) where
@@ -58,25 +58,28 @@ root = docTypeHtml $ do
 header :: Html
 header = h1 "omnomnom"
 
--- | Show the list of users
+-- | Show a login box
 --
-users :: [User] -> Html
-users users = H.div ! A.id "users" $ do
-    p "Select your name or add yourself to the list."
-    ul $ forM_ users $ \user -> li $ do
-        let name' = userName user
-        a ! onclick (stringValue $ "login('" ++ name' ++ "');")
-          ! href "#"
-          $ string name'
-    H.form ! name "add-user" ! onsubmit "return addUser();" $ do
-        input ! type_ "text" ! name "add-user-name" ! A.id "add-user-name"
-        input ! type_ "submit" ! value "Create new user"
+login :: Html
+login = H.div ! A.id "login" $ do
+    H.form ! name "login-form" ! action "/login" ! A.method "post" $ do
+
+        H.label ! for "login-form-name" $ "Name:"
+        input ! type_ "text" ! name "login-form-name" ! A.id "login-form-name"
+        br
+
+        H.label ! for "login-form-password" $ "Password:"
+        input ! type_ "password" ! name "login-form-password"
+                                 ! A.id "login-form-password"
+        br
+
+        input ! type_ "submit" ! value "Create new user or login"
 
 -- | Show the shop
 --
 shop :: [Product] -> Html
 shop products = H.div ! A.id "shop" $ do
-    a ! onclick "logout();" ! href "#" $ "Logout"
+    a ! href "/logout" $ "Logout"
     ul $ forM_ products $ \product -> li $ do
         let name' = unProduct product
         p $ string $ name'

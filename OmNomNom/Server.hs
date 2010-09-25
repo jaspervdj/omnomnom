@@ -40,40 +40,22 @@ content :: Snap ()
 content = do
     muser <- getUserFromCookie
     case muser of
-        Nothing -> users
+        Nothing -> login
         Just _ -> do shop
                      cart
-
--- | User list
---
-users :: Snap ()
-users = withRedis $ \redis -> do
-    keys <- liftIO $ setFindAll redis "users"
-    users' <- liftIO $ fmap catMaybes $ forM keys $ itemGet redis
-    blaze $ Templates.users $ sort users'
-
--- | Add a user
---
-addUser :: Snap ()
-addUser = withRedis $ \redis -> do
-    params <- rqParams <$> getRequest
-    Just name <- fmap (Utf8.decode . SB.unpack) <$> getParam "name"
-    exists <- liftIO $ setContains redis "users" $ userKey name
-    if exists || null name
-        then blaze $ Templates.warning "Invalid username."
-        else liftIO $ do setAdd redis "users" $ userKey name
-                         itemSet redis (userKey name) (User name [])
-    
-    -- Show the user list
-    users
 
 -- | Log in
 --
 login :: Snap ()
 login = do
-    Just name <- fmap (Utf8.decode . SB.unpack) <$> getParam "name"
-    modifyResponse $ addCookie $ cookie name
-    root
+    mname <- fmap (Utf8.decode . SB.unpack) <$> getParam "login-form-name"
+    mpw <- fmap (Utf8.decode . SB.unpack) <$> getParam "login-form-password"
+    muser <- addUser mname mpw
+    case muser of
+        Just user -> modifyResponse $ addCookie (cookie $ userName user)
+                                    . setHeader "Location" "/"
+                                    . setResponseCode 302
+        Nothing -> blaze Templates.login
   where
     cookie name = Cookie
         { cookieName = "user"
@@ -88,7 +70,8 @@ login = do
 logout :: Snap ()
 logout = do
     modifyResponse $ addCookie cookie
-    root
+                   . setHeader "Location" "/"
+                   . setResponseCode 302
   where
     cookie = Cookie
         { cookieName = "user"
@@ -133,12 +116,27 @@ site = fileServe "static" <|> route
     [ ("", ifTop root)
     , ("/header", header)
     , ("/content", content)
-    , ("/add-user", addUser)
     , ("/login", login)
     , ("/logout", logout)
     , ("/order", order)
     , ("/cart", cart)
     ]
+
+-- | Add a user
+--
+addUser :: Maybe String       -- ^ Username
+        -> Maybe String       -- ^ Password
+        -> Snap (Maybe User)  -- ^ Resulting user
+addUser (Just name) (Just password) = withRedis $ \redis -> do
+    exists <- liftIO $ setContains redis "users" $ userKey name
+    if exists
+        then liftIO $ itemGet redis (userKey name)
+        else liftIO $ do
+            let user = User name []
+            setAdd redis "users" $ userKey name
+            itemSet redis (userKey name) user
+            return $ Just user
+addUser _ _ = return Nothing
 
 -- | Get the current user (based on cookies)
 --

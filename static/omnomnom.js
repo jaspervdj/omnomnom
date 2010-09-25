@@ -13,18 +13,6 @@ function addUser() {
     return false;
 }
 
-function login(name) {
-    $.post("/login/", {name: name}, function (result) {
-        window.location.replace("/");
-    });
-}
-
-function logout() {
-    $.post("/logout/", function (result) {
-        window.location.replace("/");
-    });
-}
-
 function order(name) {
     $.post("/order/", {name: name}, function (result) {
         $("#cart").html(result);
