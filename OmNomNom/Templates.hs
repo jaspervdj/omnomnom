@@ -89,5 +89,6 @@ shop products = H.div ! A.id "shop" $ do
 cart :: User -> Html
 cart user = H.div ! A.id "cart" $ do
     p $ string $ "Cart for " ++ userName user
-    ul $ forM_ (userProducts user) $ \product -> li $
+    ul $ forM_ (productCount $ userProducts user) $ \(product, count) -> li $ do
         p $ string $ unProduct product
+        p $ string $ "Quantity: " ++ show count

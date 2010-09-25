@@ -6,8 +6,11 @@ module OmNomNom.Types
       User (..)
     , userKey
     , Product (..)
+    , productCount
     ) where
 
+import Control.Arrow ((&&&))
+import Data.List (group, sort)
 import Control.Applicative ((<$>), (<*>))
 import Data.Binary
 import qualified Data.ByteString as SB
@@ -29,3 +32,8 @@ userKey name = Key $ SB.pack $ Utf8.encode $ "user-" ++ name
 
 newtype Product = Product {unProduct :: String}
                 deriving (Show, Binary, Ord, Eq)
+
+-- | Create a frequency list from a list of products
+--
+productCount :: [Product] -> [(Product, Int)]
+productCount = map (head &&& length) . group . sort
