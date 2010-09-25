@@ -5,7 +5,6 @@ module OmNomNom.Templates
     ( warning
     , blaze
     , root
-    , OmNomNom.Templates.header
     , login
     , shop
     , cart
@@ -43,20 +42,16 @@ blaze html = do
 
 -- | Main template
 --
-root :: Html
-root = docTypeHtml $ do
+root :: Html -> Html
+root inner = docTypeHtml $ do
     H.head $ do
         H.title "omnomnom"
         javaScript ! src "/jquery-1.4.2.min.js" $ mempty
         javaScript ! src "/omnomnom.js" $ mempty
     H.body $ do
-        javaScript "appendBody('/header');"
-        javaScript "appendBody('/content');"
-
--- | Site header
---
-header :: Html
-header = h1 "omnomnom"
+        h1 "omnomnom"
+        inner
+        p "Footer here"
 
 -- | Show a login box
 --
@@ -84,7 +79,7 @@ shop products = H.div ! A.id "shop" $ do
         let name' = unProduct product
         p $ string $ name'
         H.form ! name "shop-product"
-               ! onsubmit (stringValue $ "return order('" ++ name' ++ "');") $
+               ! onsubmit (stringValue $ "return _cart('" ++ name' ++ "');") $
             input ! type_ "submit" ! value "Get me one!"
 
 -- | The cart with the user's products in

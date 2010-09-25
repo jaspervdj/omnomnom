@@ -6,18 +6,19 @@ module OmNomNom.Server
     ) where
 
 import Data.List (sort)
-import Control.Applicative ((<|>), (<$>))
+import Control.Applicative ((<|>), (<$>), (<*>))
 import System.Environment (getArgs)
 import Control.Monad.Trans (liftIO)
 import Control.Monad (forM, (=<<), mapM_, when)
 import Data.Maybe (catMaybes)
+import Data.Monoid (mappend)
 
 import Snap.Types
 import Snap.Http.Server (httpServe)
 import Snap.Util.FileServe (fileServe)
 import qualified Data.ByteString as SB
 import qualified Codec.Binary.UTF8.String as Utf8 (decode, encode)
-import Text.Blaze (string)
+import Text.Blaze (Html)
 
 import OmNomNom.Database
 import OmNomNom.Types
@@ -27,22 +28,12 @@ import qualified OmNomNom.Templates as Templates
 -- | Site root
 --
 root :: Snap ()
-root = blaze Templates.root
-
--- | Site header
---
-header :: Snap ()
-header = blaze Templates.header
-
--- | Content section
---
-content :: Snap ()
-content = do
+root = do
     muser <- getUserFromCookie
-    case muser of
-        Nothing -> login
-        Just _ -> do shop
-                     cart
+    inner <- case muser of
+        Nothing -> return Templates.login
+        Just _ -> mappend <$> _shop <*> _cart
+    blaze $ Templates.root inner
 
 -- | Log in
 --
@@ -53,9 +44,9 @@ login = do
     muser <- addUser mname mpw
     case muser of
         Just user -> modifyResponse $ addCookie (cookie $ userName user)
-                                    . setHeader "Location" "/"
-                                    . setResponseCode 302
-        Nothing -> blaze Templates.login
+        Nothing -> return ()
+    modifyResponse $ setHeader "Location" "/"
+                   . setResponseCode 302
   where
     cookie name = Cookie
         { cookieName = "user"
@@ -81,45 +72,37 @@ logout = do
         , cookiePath = Just "/"
         }
 
+-- | Render a partial
+--
+partial :: Snap Html -> Snap ()
+partial = (>>= blaze)
+
 -- | Show all products
 --
-shop :: Snap ()
-shop = do
+_shop :: Snap Html
+_shop = do
     products <- liftIO $ withRedis $ flip setFindAll "products"
-    blaze $ Templates.shop $ sort products
+    return $ Templates.shop $ sort products
 
--- | Order a product
+-- | Show the cart (order a product if it's a POST)
 --
-order :: Snap ()
-order = withRedis $ \redis-> do
+_cart :: Snap Html
+_cart = withRedis $ \redis -> do
     Just user <- getUserFromCookie
-    Just product <- fmap (Product . Utf8.decode . SB.unpack) <$> getParam "name"
-    valid <- liftIO $ setContains redis "products" product
-    when valid $ do
-        let user' = user {userProducts = product : userProducts user}
-        liftIO $ itemSet redis (userKey $ userName user) user'
-
-    -- Show the cart
-    cart
-
--- | Show the cart
---
-cart :: Snap ()
-cart = withRedis $ \redis -> do
-    Just user <- getUserFromCookie
-    blaze $ Templates.cart user 
+    mproduct <- fmap (Product . Utf8.decode . SB.unpack) <$> getParam "name"
+    user' <- case mproduct of Just product -> addUserProduct user product
+                              Nothing      -> return user
+    return $ Templates.cart user'
 
 -- | Main site handler
 --
 site :: Snap ()
 site = fileServe "static" <|> route
     [ ("", ifTop root)
-    , ("/header", header)
-    , ("/content", content)
     , ("/login", login)
     , ("/logout", logout)
-    , ("/order", order)
-    , ("/cart", cart)
+    , ("/_shop", partial _shop)
+    , ("/_cart", partial _cart)
     ]
 
 -- | Add a user
@@ -147,6 +130,20 @@ getUserFromCookie = do
         [] -> return Nothing
         (cookie : _) -> liftIO $ withRedis $ \redis -> itemGet redis $
             userKey $ Utf8.decode $ SB.unpack $ cookieValue cookie
+
+-- | Add a product to a user
+--
+addUserProduct :: User       -- ^ User
+               -> Product    -- ^ Product name
+               -> Snap User  -- ^ Resulting user
+addUserProduct user product = withRedis $ \redis -> do
+    valid <- liftIO $ setContains redis "products" product
+    if valid
+        then do
+            let user' = user {userProducts = product : userProducts user}
+            liftIO $ itemSet redis (userKey $ userName user) user'
+            return user'
+        else return user
 
 -- | Main function
 --
