@@ -13,7 +13,6 @@ import Control.Monad (forM_)
 import Data.Monoid (mempty)
 
 import Snap.Types
-import Text.Blaze (Html)
 import Text.Blaze.Renderer.Utf8 (renderHtml)
 import Text.Blaze.Html5
 import qualified Text.Blaze.Html5 as H
@@ -30,9 +29,9 @@ javaScript = script ! type_ "text/javascript"
 -- | Send a blazehtml response to the browser
 --
 blaze :: Html -> Snap ()
-blaze html = do
+blaze html' = do
     modifyResponse $ addHeader "Content-Type" "text/html; charset=UTF-8"
-    writeLBS $ renderHtml html
+    writeLBS $ renderHtml html'
 
 -- | Main template
 --
@@ -71,8 +70,8 @@ login message = root $ H.div ! A.id "login" $ do
 _shop :: [Product] -> Html
 _shop products = H.div ! A.id "shop" $ do
     a ! href "/logout" $ "Logout"
-    ul $ forM_ products $ \product -> li $ do
-        let name' = unProduct product
+    ul $ forM_ products $ \product' -> li $ do
+        let name' = unProduct product'
         p $ string $ name'
         H.form ! name "shop-product"
                ! onsubmit (stringValue $ "return _cart('" ++ name' ++ "');") $
@@ -83,6 +82,7 @@ _shop products = H.div ! A.id "shop" $ do
 _cart :: User -> Html
 _cart user = H.div ! A.id "cart" $ do
     p $ string $ "Cart for " ++ userEmail user
-    ul $ forM_ (productCount $ userProducts user) $ \(product, count) -> li $ do
-        p $ string $ unProduct product
+    let counts = productCount $ userProducts user
+    ul $ forM_ counts $ \(product', count) -> li $ do
+        p $ string $ unProduct product'
         p $ string $ "Quantity: " ++ show count
