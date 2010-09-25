@@ -2,12 +2,11 @@
 --
 {-# LANGUAGE OverloadedStrings #-}
 module OmNomNom.Templates
-    ( warning
-    , blaze
+    ( blaze
     , root
     , login
-    , shop
-    , cart
+    , _shop
+    , _cart
     ) where
 
 import Control.Monad (forM_)
@@ -27,11 +26,6 @@ import OmNomNom.Types
 --
 javaScript :: Html -> Html
 javaScript = script ! type_ "text/javascript"
-
--- | A warning
---
-warning :: Html -> Html
-warning = H.div ! class_ "warning"
 
 -- | Send a blazehtml response to the browser
 --
@@ -55,8 +49,10 @@ root inner = docTypeHtml $ do
 
 -- | Show a login box
 --
-login :: Html
-login = H.div ! A.id "login" $ do
+login :: String -> Html
+login message = root $ H.div ! A.id "login" $ do
+    p $ string message
+
     H.form ! name "login-form" ! action "/login" ! A.method "post" $ do
 
         H.label ! for "login-form-name" $ "Name:"
@@ -72,8 +68,8 @@ login = H.div ! A.id "login" $ do
 
 -- | Show the shop
 --
-shop :: [Product] -> Html
-shop products = H.div ! A.id "shop" $ do
+_shop :: [Product] -> Html
+_shop products = H.div ! A.id "shop" $ do
     a ! href "/logout" $ "Logout"
     ul $ forM_ products $ \product -> li $ do
         let name' = unProduct product
@@ -84,8 +80,8 @@ shop products = H.div ! A.id "shop" $ do
 
 -- | The cart with the user's products in
 --
-cart :: User -> Html
-cart user = H.div ! A.id "cart" $ do
+_cart :: User -> Html
+_cart user = H.div ! A.id "cart" $ do
     p $ string $ "Cart for " ++ userName user
     ul $ forM_ (productCount $ userProducts user) $ \(product, count) -> li $ do
         p $ string $ unProduct product

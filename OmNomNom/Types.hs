@@ -13,19 +13,21 @@ import Control.Arrow ((&&&))
 import Data.List (group, sort)
 import Control.Applicative ((<$>), (<*>))
 import Data.Binary
+import Data.ByteString (ByteString)
 import qualified Data.ByteString as SB
 import qualified Codec.Binary.UTF8.String as Utf8 (encode)
 
 import OmNomNom.Database
 
 data User = User
-    { userName :: String
+    { userName     :: String
     , userProducts :: [Product]
+    , userPassword :: ByteString
     } deriving (Show, Ord, Eq)
 
 instance Binary User where
-    get = User <$> get <*> get
-    put (User n p) = put n >> put p
+    get = User <$> get <*> get <*> get
+    put (User n p d) = put n >> put p >> put d
 
 userKey :: String -> Key
 userKey name = Key $ SB.pack $ Utf8.encode $ "user-" ++ name
