@@ -55,8 +55,8 @@ login message = root $ H.div ! A.id "login" $ do
 
     H.form ! name "login-form" ! action "/login" ! A.method "post" $ do
 
-        H.label ! for "login-form-name" $ "Name:"
-        input ! type_ "text" ! name "login-form-name" ! A.id "login-form-name"
+        H.label ! for "login-form-email" $ "Email:"
+        input ! type_ "text" ! name "login-form-email" ! A.id "login-form-email"
         br
 
         H.label ! for "login-form-password" $ "Password:"
@@ -82,7 +82,7 @@ _shop products = H.div ! A.id "shop" $ do
 --
 _cart :: User -> Html
 _cart user = H.div ! A.id "cart" $ do
-    p $ string $ "Cart for " ++ userName user
+    p $ string $ "Cart for " ++ userEmail user
     ul $ forM_ (productCount $ userProducts user) $ \(product, count) -> li $ do
         p $ string $ unProduct product
         p $ string $ "Quantity: " ++ show count

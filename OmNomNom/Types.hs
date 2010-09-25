@@ -20,7 +20,7 @@ import qualified Codec.Binary.UTF8.String as Utf8 (encode)
 import OmNomNom.Database
 
 data User = User
-    { userName     :: String
+    { userEmail    :: String
     , userProducts :: [Product]
     , userPassword :: ByteString
     } deriving (Show, Ord, Eq)
@@ -30,7 +30,7 @@ instance Binary User where
     put (User n p d) = put n >> put p >> put d
 
 userKey :: String -> Key
-userKey name = Key $ SB.pack $ Utf8.encode $ "user-" ++ name
+userKey email = Key $ SB.pack $ Utf8.encode $ "user-" ++ email
 
 newtype Product = Product {unProduct :: String}
                 deriving (Show, Binary, Ord, Eq)

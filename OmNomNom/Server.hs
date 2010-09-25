@@ -45,19 +45,19 @@ root = do
 --
 login :: Snap ()
 login = do
-    mname <- fmap (Utf8.decode . SB.unpack) <$> getParam "login-form-name"
+    memail <- fmap (Utf8.decode . SB.unpack) <$> getParam "login-form-email"
     mpw <- fmap digest <$> getParam "login-form-password"
     muser <- fromMaybe (return $ Left "Please log in") $
-        addUser <$> mname <*> mpw
+        addUser <$> memail <*> mpw
     case muser of
         Right user ->
-            modifyResponse $ addCookie (nameCookie $ userName user)
+            modifyResponse $ addCookie (nameCookie $ userEmail user)
                            . addCookie (passwordCookie $ userPassword user)
                            . setHeader "Location" "/"
                            . setResponseCode 302
         Left e -> blaze $ Templates.login e
   where
-    nameCookie = makeSimpleCookie "user-name" . SB.pack . Utf8.encode
+    nameCookie = makeSimpleCookie "user-email" . SB.pack . Utf8.encode
     passwordCookie = makeSimpleCookie "user-password"
     digest = SB.concat . LB.toChunks . bytestringDigest
            . sha1 . LB.fromChunks . return
@@ -65,7 +65,7 @@ login = do
 -- | Log out
 --
 logout :: Snap ()
-logout = modifyResponse $ addCookie (makeSimpleCookie "user-name" "")
+logout = modifyResponse $ addCookie (makeSimpleCookie "user-email" "")
                         . addCookie (makeSimpleCookie "user-password" "false")
                         . setHeader "Location" "/"
                         . setResponseCode 302
@@ -105,21 +105,21 @@ site = fileServe "static" <|> route
 
 -- | Add a user
 --
-addUser :: String                     -- ^ Username
+addUser :: String                     -- ^ Email
         -> ByteString                 -- ^ Password hash
         -> Snap (Either String User)  -- ^ Resulting user
-addUser name password = withRedis $ \redis -> do
-    exists <- liftIO $ setContains redis "users" $ userKey name
+addUser email password = withRedis $ \redis -> do
+    exists <- liftIO $ setContains redis "users" $ userKey email
     if exists
         then liftIO $ do
-            Just user <- itemGet redis (userKey name)
+            Just user <- itemGet redis (userKey email)
             return $ if userPassword user == password
                             then Right user
                             else Left "Wrong password"
         else liftIO $ do
-            let user = User name [] password
-            setAdd redis "users" $ userKey name
-            itemSet redis (userKey name) user
+            let user = User email [] password
+            setAdd redis "users" $ userKey email
+            itemSet redis (userKey email) user
             return $ Right user
 
 -- | Get the current user (based on cookies)
@@ -127,12 +127,12 @@ addUser name password = withRedis $ \redis -> do
 getUserFromCookie :: Snap (Either String User)
 getUserFromCookie = do
     cookies <- rqCookies <$> getRequest
-    let n = filter ((== "user-name") . cookieName) cookies
+    let n = filter ((== "user-email") . cookieName) cookies
         p = filter ((== "user-password") . cookieName) cookies
     case (n, p) of
-        ([name], [password]) -> do
+        ([email], [password]) -> do
             u <- liftIO $ withRedis $ \redis -> itemGet redis $ userKey
-                        $ Utf8.decode $ SB.unpack $ cookieValue name
+                        $ Utf8.decode $ SB.unpack $ cookieValue email
             case u of Just user -> if userPassword user == cookieValue password
                                         then return $ Right user
                                         else return $ Left $ show (userPassword user, cookieValue password)
@@ -149,7 +149,7 @@ addUserProduct user product = withRedis $ \redis -> do
     if valid
         then do
             let user' = user {userProducts = product : userProducts user}
-            liftIO $ itemSet redis (userKey $ userName user) user'
+            liftIO $ itemSet redis (userKey $ userEmail user) user'
             return user'
         else return user
 
